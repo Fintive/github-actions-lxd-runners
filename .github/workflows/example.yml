@@ -1,0 +1,35 @@
+name: Example Workflow with Node.js 22 and Yarn 1.22.21
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, x64, self-hostedv2]  # Uses your runner
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js 22
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        
+    - name: Install Yarn 1.22.21
+      run: |
+        npm install -g yarn@1.22.21
+        
+    - name: Verify versions
+      run: |
+        echo "Node.js version: $(node --version)"
+        echo "npm version: $(npm --version)"
+        echo "Yarn version: $(yarn --version)"
+        
+    - name: Install dependencies
+      run: yarn install
+      
+    - name: Build project
+      run: yarn build
+      
+    - name: Run tests
+      run: yarn test 

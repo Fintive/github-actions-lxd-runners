@@ -1,0 +1,174 @@
+#cloud-config
+
+# Update package list
+package_update: true
+package_upgrade: true
+
+# Install required packages
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - build-essential
+  - python3
+  - python3-pip
+  - git
+  - wget
+  - unzip
+  - jq
+  - libsdl-pango-dev
+  - libgif-dev
+  - xvfb
+  - libnss3-dev
+  - libgconf-2-4
+  - libxss1
+  - libxtst6
+  - libgtk-3-0
+  - libasound2-dev
+  - libdrm2
+  - libxcomposite1
+  - libxcursor1
+  - libxdamage1
+  - libxi6
+  - libxrandr2
+  - libatk1.0-0
+  - libcairo-gobject2
+  - libgdk-pixbuf2.0-0
+  - fonts-liberation
+  - libappindicator3-1
+  - libgbm1
+  - libxshmfence1
+  - libglu1-mesa
+  - openssh-server
+  - awscli
+
+# Create necessary users and groups
+users:
+  - name: runner
+    groups: docker, sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    home: /home/runner
+    create_home: true
+  - name: ubuntu
+    groups: docker, sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... # Add your public key here
+
+# System configuration
+write_files:
+  - path: /etc/systemd/system/actions.runner.${runner_name}.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=GitHub Actions Runner (${runner_name})
+      After=network.target
+      
+      [Service]
+      Type=simple
+      User=runner
+      WorkingDirectory=/home/runner/actions-runner
+      ExecStart=/home/runner/actions-runner/run.sh
+      Restart=always
+      RestartSec=5
+      KillMode=process
+      KillSignal=SIGTERM
+      TimeoutStopSec=5min
+      
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /tmp/setup-runner.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      
+      cd /home/runner
+      mkdir -p actions-runner
+      cd actions-runner
+      
+      # Download and extract GitHub Actions runner
+      RUNNER_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.tag_name' | sed 's/v//')
+      curl -o actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz -L https://github.com/actions/runner/releases/download/v$${RUNNER_VERSION}/actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
+      tar xzf actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
+      rm actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
+      
+      # Configure the runner with unique timestamp name
+      ./config.sh --url ${repo_url} --token ${access_token} --name ${runner_name}-$(date +%s) --work ${runner_workdir} --labels ${labels} --unattended --replace
+
+  - path: /tmp/install-nodejs.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      
+      # Install Node.js ${node_version}
+      curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -
+      sudo apt-get install -y nodejs
+      
+      # Install Yarn ${yarn_version}
+      sudo npm install -g yarn@${yarn_version}
+      
+      # Verify installations
+      echo "=== Installed Versions ==="
+      node --version
+      npm --version
+      yarn --version
+      echo "========================="
+
+# System configuration commands
+runcmd:
+  # Install Docker from official repository
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$${VERSION_CODENAME}") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  
+  # Ensure Docker service is running
+  - systemctl enable docker
+  - systemctl start docker
+  
+  # Add users to docker group
+  - usermod -aG docker ubuntu
+  - usermod -aG docker runner
+  
+  # Install Node.js and Yarn
+  - /tmp/install-nodejs.sh
+  
+  # Setup GitHub Actions runner as runner user
+  - su - runner -c '/tmp/setup-runner.sh'
+  
+  # Install runner dependencies
+  - cd /home/runner/actions-runner && sudo ./bin/installdependencies.sh
+  
+  # Enable and start the runner service
+  - systemctl daemon-reload
+  - systemctl enable actions.runner.${runner_name}.service
+  - systemctl start actions.runner.${runner_name}.service
+  
+  
+  # Disable IPv6 to match Docker setup
+  - echo 'net.ipv6.conf.all.disable_ipv6 = 1' >> /etc/sysctl.conf
+  - sysctl -p
+  
+  # Clean up
+  - rm -f /tmp/setup-runner.sh /tmp/install-nodejs.sh
+  - apt-get clean
+  - rm -rf /var/lib/apt/lists/*
+
+# Final message
+final_message: |
+  GitHub Actions Runner setup complete!
+  Runner name: ${runner_name}
+  Repository: ${repo_url}
+  Labels: ${labels}
+  
+  The runner service should be starting automatically.
+  Check status with: systemctl status actions.runner.${runner_name}.service 

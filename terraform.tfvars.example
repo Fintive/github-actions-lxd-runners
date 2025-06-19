@@ -1,0 +1,28 @@
+# GitHub Actions LXD Runner Configuration
+# Copy this file to terraform.tfvars and customize the values
+
+# GitHub repository URL
+repo_url = "https://github.com/Fintive/fintive-core"
+
+# Base name for runners (will be suffixed with -1, -2, etc.)
+runner_name = "fintive-runner-v2"
+
+# GitHub registration token (required)
+# Generate at: https://github.com/YOUR_ORG/YOUR_REPO/settings/actions/runners
+# access_token = "YOUR_GITHUB_REGISTRATION_TOKEN_HERE"
+
+# Number of runners to deploy
+runner_count = 4
+
+# Runner labels (comma-separated)
+labels = "linux,x64,self-hostedv2"
+
+# Working directory for runners
+runner_workdir = "/tmp/runner/work"
+
+# Node.js and Yarn versions
+node_version = "22"
+yarn_version = "1.22.21"
+
+# SSH key path for container access
+ssh_private_key_path = "/home/jeff/.ssh/id_ed25519"

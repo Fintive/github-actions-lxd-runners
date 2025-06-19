@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo mkdir:*)",
+      "Bash(terraform apply:*)",
+      "Bash(lxc exec:*)",
+      "WebFetch(domain:docs.docker.com)"
+    ],
+    "deny": []
+  }
+}
