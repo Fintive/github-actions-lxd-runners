@@ -13,6 +13,12 @@ provider "lxd" {
   accept_remote_certificate    = true
 }
 
+# Auto-detect primary network interface if not specified
+data "external" "network_interface" {
+  program = ["bash", "-c", "echo '{\"interface\":\"'$(ip route | grep default | head -1 | awk '{print $5}')'\"}'"
+  ]
+}
+
 # Generate registration token using gh CLI (commented out - need proper token scope)
 # data "external" "runner_token" {
 #   program = ["bash", "-c", "gh api repos/Fintive/fintive-core/actions/runners/registration-token --jq '{token: .token}'"]
@@ -43,8 +49,8 @@ resource "lxd_profile" "github_runner" {
     type = "disk"
     properties = {
       "path" = "/"
-      "pool" = "4tbssd"
-      "size" = "20GB"
+      "pool" = var.lxd_storage_pool
+      "size" = var.container_size
     }
   }
 
@@ -60,6 +66,17 @@ resource "lxd_instance" "github_runner" {
 
   config = {
     "boot.autostart" = "true"
+    "security.nesting" = "true"
+    "security.privileged" = "false"
+  }
+
+  device {
+    name = "eth0"
+    type = "nic"
+    properties = {
+      "nictype" = "macvlan"
+      "parent"  = var.network_interface != "" ? var.network_interface : data.external.network_interface.result.interface
+    }
   }
 
 }

@@ -64,3 +64,27 @@ variable "runner_count" {
   type        = number
   default     = 4
 }
+
+variable "network_interface" {
+  description = "Network interface to bridge containers to (auto-detected if not specified)"
+  type        = string
+  default     = ""
+}
+
+variable "lxd_storage_pool" {
+  description = "LXD storage pool to use for containers"
+  type        = string
+  default     = "default"
+}
+
+variable "container_size" {
+  description = "Container root filesystem size"
+  type        = string
+  default     = "20GB"
+}
+
+variable "runner_version" {
+  description = "GitHub Actions runner version (latest if not specified)"
+  type        = string
+  default     = ""
+}

@@ -88,18 +88,53 @@ write_files:
       #!/bin/bash
       set -e
       
+      # Retry function
+      retry() {
+        local retries=$1
+        shift
+        local count=0
+        until "$@"; do
+          exit=$?
+          wait=$((2 ** count))
+          count=$((count + 1))
+          if [ $count -lt $retries ]; then
+            echo "Retry $count/$retries exited $exit, retrying in $wait seconds..."
+            sleep $wait
+          else
+            echo "Retry $count/$retries exited $exit, no more retries left."
+            return $exit
+          fi
+        done
+        return 0
+      }
+      
       cd /home/runner
       mkdir -p actions-runner
       cd actions-runner
       
-      # Download and extract GitHub Actions runner
-      RUNNER_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.tag_name' | sed 's/v//')
-      curl -o actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz -L https://github.com/actions/runner/releases/download/v$${RUNNER_VERSION}/actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
+      # Download and extract GitHub Actions runner with retries
+      echo "Downloading GitHub Actions runner..."
+      RUNNER_VERSION=$(retry 3 curl -s https://api.github.com/repos/actions/runner/releases/latest | jq -r '.tag_name' | sed 's/v//')
+      retry 5 curl -o actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz -L https://github.com/actions/runner/releases/download/v$${RUNNER_VERSION}/actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
       tar xzf actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
       rm actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
       
-      # Configure the runner with unique timestamp name
-      ./config.sh --url ${repo_url} --token ${access_token} --name ${runner_name}-$(date +%s) --work ${runner_workdir} --labels ${labels} --unattended --replace
+      # Configure the runner with unique timestamp name and retries
+      echo "Configuring GitHub Actions runner..."
+      retry 3 ./config.sh --url ${repo_url} --token ${access_token} --name ${runner_name}-$(date +%s) --work ${runner_workdir} --labels ${labels} --unattended --replace
+      
+      # Install and start the service
+      echo "Installing runner service..."
+      sudo ./svc.sh install
+      sudo ./svc.sh start
+      
+      echo "GitHub Actions Runner setup complete!"
+      echo "Runner name: ${runner_name}"
+      echo "Repository: ${repo_url}"
+      echo "Labels: ${labels}"
+      echo ""
+      echo "The runner service should be starting automatically."
+      echo "Check status with: systemctl status actions.runner.*service"
 
   - path: /tmp/install-nodejs.sh
     permissions: '0755'
