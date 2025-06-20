@@ -61,6 +61,10 @@ This project provides Infrastructure as Code (IaC) to deploy multiple GitHub Act
 | `labels` | Runner labels | `linux,x64,self-hostedv2` |
 | `node_version` | Node.js version | `22` |
 | `yarn_version` | Yarn version | `1.22.21` |
+| `network_interface` | Network interface for bridge (auto-detected) | `""` |
+| `lxd_storage_pool` | LXD storage pool | `default` |
+| `container_size` | Container root filesystem size | `20GB` |
+| `runner_version` | GitHub Actions runner version | `""` (latest) |
 
 ### Runner Capabilities
 
@@ -95,6 +99,7 @@ Each runner includes:
 ├── variables.tf         # Variable definitions
 ├── cloud-init.yml       # Container initialization script
 ├── terraform.tfvars.example  # Example variables file
+├── verify-runners.sh    # Post-deployment verification script
 └── README.md           # This file
 ```
 
@@ -124,6 +129,9 @@ terraform apply \
 
 Check runner status:
 ```bash
+# Verify deployment with included script
+./verify-runners.sh
+
 # List all containers
 lxc list | grep runner
 
@@ -143,7 +151,7 @@ GitHub registration tokens expire after 1 hour. For production use:
 
 ## Scaling
 
-This infrastructure supports deployment across multiple hosts:
+This infrastructure supports deployment across multiple hosts and is designed for cross-machine portability:
 
 ```bash
 # Host 1
@@ -152,6 +160,12 @@ terraform apply -var="access_token=TOKEN1" -var="runner_count=4"
 # Host 2  
 terraform apply -var="access_token=TOKEN2" -var="runner_count=4"
 ```
+
+### Cross-Machine Features
+- Automatic network interface detection
+- Configurable storage pools and container sizes  
+- Retry logic for robust deployment
+- Post-deployment verification
 
 ## Troubleshooting
 
