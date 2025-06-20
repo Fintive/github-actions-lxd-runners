@@ -19,6 +19,12 @@ data "external" "network_interface" {
   ]
 }
 
+# Get the host machine's hostname
+data "external" "host_hostname" {
+  program = ["bash", "-c", "echo '{\"hostname\":\"'$(hostname)'\"}'"
+  ]
+}
+
 # Generate registration token using gh CLI (commented out - need proper token scope)
 # data "external" "runner_token" {
 #   program = ["bash", "-c", "gh api repos/Fintive/fintive-core/actions/runners/registration-token --jq '{token: .token}'"]
@@ -41,6 +47,7 @@ resource "lxd_profile" "github_runner" {
       runner_replace_existing = var.runner_replace_existing
       node_version           = var.node_version
       yarn_version           = var.yarn_version
+      host_hostname          = data.external.host_hostname.result.hostname
     })
   }
 
