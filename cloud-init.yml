@@ -119,9 +119,10 @@ write_files:
       tar xzf actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
       rm actions-runner-linux-x64-$${RUNNER_VERSION}.tar.gz
       
-      # Configure the runner with unique timestamp name and retries
+      # Configure the runner with hostname and unique timestamp name and retries
       echo "Configuring GitHub Actions runner..."
-      retry 3 ./config.sh --url ${repo_url} --token ${access_token} --name ${runner_name}-$(date +%s) --work ${runner_workdir} --labels ${labels} --unattended --replace
+      HOSTNAME=$(hostname)
+      retry 3 ./config.sh --url ${repo_url} --token ${access_token} --name ${runner_name}-$${HOSTNAME}-$(date +%s) --work ${runner_workdir} --labels ${labels} --unattended --replace
       
       # Install and start the service
       echo "Installing runner service..."
@@ -129,7 +130,7 @@ write_files:
       sudo ./svc.sh start
       
       echo "GitHub Actions Runner setup complete!"
-      echo "Runner name: ${runner_name}"
+      echo "Runner name: ${runner_name}-$${HOSTNAME}-$(date +%s)"
       echo "Repository: ${repo_url}"
       echo "Labels: ${labels}"
       echo ""
@@ -158,6 +159,9 @@ write_files:
 
 # System configuration commands
 runcmd:
+  # Fix DNS resolution
+  - echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  - echo "nameserver 1.1.1.1" >> /etc/resolv.conf
   # Install Docker from official repository
   - mkdir -p /etc/apt/keyrings
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -201,9 +205,9 @@ runcmd:
 # Final message
 final_message: |
   GitHub Actions Runner setup complete!
-  Runner name: ${runner_name}
+  Runner name: ${runner_name}-$(hostname)
   Repository: ${repo_url}
   Labels: ${labels}
   
   The runner service should be starting automatically.
-  Check status with: systemctl status actions.runner.${runner_name}.service 
+  Check status with: systemctl status actions.runner.*.service 

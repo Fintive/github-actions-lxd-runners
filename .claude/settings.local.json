@@ -4,7 +4,11 @@
       "Bash(sudo mkdir:*)",
       "Bash(terraform apply:*)",
       "Bash(lxc exec:*)",
-      "WebFetch(domain:docs.docker.com)"
+      "WebFetch(domain:docs.docker.com)",
+      "Bash(ls:*)",
+      "Bash(lxc start:*)",
+      "Bash(lxc config device remove:*)",
+      "Bash(lxc config device add:*)"
     ],
     "deny": []
   }
