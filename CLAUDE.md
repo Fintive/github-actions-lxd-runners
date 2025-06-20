@@ -90,7 +90,12 @@ lxc exec RUNNER_NAME -- bash
 
 ## Recent Enhancements
 
-### Cross-Machine Portability (Latest Commit)
+### Runner Naming and DNS Fixes (Latest)
+- Runner names now include hostname: `${runner_name}-${HOSTNAME}-$(timestamp)`
+- Fixed DNS resolution issues in containers (reliable nameservers: 8.8.8.8, 1.1.1.1)
+- Automatic DNS configuration in cloud-init to prevent connectivity issues
+
+### Cross-Machine Portability
 - Automatic network interface detection
 - Configurable storage pools and container sizes
 - Retry logic in cloud-init for reliability
@@ -125,9 +130,23 @@ lxc exec CONTAINER -- systemctl status actions.runner.*
 # Test connectivity from container
 lxc exec CONTAINER -- ping -c 1 github.com
 
+# Check DNS resolution
+lxc exec CONTAINER -- nslookup github.com
+lxc exec CONTAINER -- cat /etc/resolv.conf
+
+# Fix DNS if needed
+lxc exec CONTAINER -- bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf && echo 'nameserver 1.1.1.1' >> /etc/resolv.conf"
+
 # Check bridge configuration
 ip link show
 ```
+
+### DNS Resolution Issues
+If runners appear offline in GitHub but containers are running:
+1. Check DNS resolution: `lxc exec CONTAINER -- nslookup github.com`
+2. If DNS fails, the local DNS server may be unreachable
+3. Restart runner services after fixing DNS: `lxc exec CONTAINER -- systemctl restart actions.runner.*`
+4. DNS is automatically configured in cloud-init, but existing containers may need manual fixes
 
 ## Testing
 

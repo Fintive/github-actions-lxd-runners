@@ -13,7 +13,7 @@ This project provides Infrastructure as Code (IaC) to deploy multiple GitHub Act
 - **Docker Support**: Full Docker and Docker Compose capabilities
 - **Modern Stack**: Node.js 22, Yarn, AWS CLI, and browser testing support
 - **Secure**: Isolated containers with proper security settings
-- **Unique Names**: Automatic timestamp-based naming to prevent conflicts
+- **Unique Names**: Automatic hostname and timestamp-based naming to prevent conflicts
 
 ## Prerequisites
 
@@ -166,12 +166,16 @@ terraform apply -var="access_token=TOKEN2" -var="runner_count=4"
 - Configurable storage pools and container sizes  
 - Retry logic for robust deployment
 - Post-deployment verification
+- Automatic DNS resolution fixes for connectivity issues
 
 ## Troubleshooting
 
 ### Runner Not Connecting
 - Verify token is valid and not expired
+- Check DNS resolution: `lxc exec runner -- nslookup github.com`
+- Fix DNS if needed: `lxc exec runner -- bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"`
 - Check network connectivity: `lxc exec runner -- curl -I https://github.com`
+- Restart runner service: `lxc exec runner -- systemctl restart actions.runner.*`
 - Review logs: `lxc exec runner -- journalctl -u actions.runner.*service`
 
 ### Container Creation Fails
